@@ -219,9 +219,11 @@ class ChatTemplateStrategy(PromptTokenizingStrategy):
             should_train = (
                 train_turn
                 if train_turn is not None
-                else bool(train_detail is not None)
-                if train_detail is not None
-                else self.train_on_inputs or role in self.roles_to_train
+                else (
+                    bool(train_detail is not None)
+                    if train_detail is not None
+                    else self.train_on_inputs or role in self.roles_to_train
+                )
             )
 
             LOG.debug(f"Should train: {should_train}")
@@ -302,6 +304,8 @@ class ChatTemplateStrategy(PromptTokenizingStrategy):
                    Returns (-1, -1) if the turn content is not found.
         """
         content = turn_content.get(self.prompter.message_field_content, "")
+        if turn == 1 and self.tokenizer.name_or_path.split("/")[0] == "meta-llama":
+            content = content.lstrip()
         content_ids = self.tokenizer.encode(content, add_special_tokens=False)
 
         eos_token_id = self.tokenizer.eos_token_id
@@ -309,14 +313,14 @@ class ChatTemplateStrategy(PromptTokenizingStrategy):
         start_search_idx = 0
 
         # Locate the starting index after the specified number of EOS tokens
-        for i, token_id in enumerate(conversation_ids):
-            if token_id == eos_token_id:
-                eos_count += 1
-                if eos_count == turn:
-                    start_search_idx = (
-                        i + 1
-                    )  # Start searching after the specified turn's EOS token
-                    break
+        # for i, token_id in enumerate(conversation_ids):
+        #     if token_id == eos_token_id:
+        #         eos_count += 1
+        #         if eos_count == turn:
+        #             start_search_idx = (
+        #                 i + 1
+        #             )  # Start searching after the specified turn's EOS token
+        #             break
 
         # Find the start index of the content within the conversation
         start_idx = -1
